@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"flag"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -47,7 +48,6 @@ func main() {
 	http.Handle("/", fs)
 
 	log.Printf("listen address %s", cfg.addr)
-	// log.Println("listen address :8080")
 	log.Fatal(http.ListenAndServe(cfg.addr, nil))
 
 }
@@ -108,10 +108,10 @@ func init() {
 	}
 
 	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
-	log.SetOutput(&lumberjack.Logger{
+	log.SetOutput(io.MultiWriter(os.Stdout, &lumberjack.Logger{
 		Filename:   filepath.Join(logDir, "webShare.log"),
 		MaxSize:    10,
 		MaxAge:     30,
 		MaxBackups: 10,
-	})
+	}))
 }
