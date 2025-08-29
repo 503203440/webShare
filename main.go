@@ -5,7 +5,12 @@ import (
 	"flag"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 type config struct {
@@ -36,6 +41,9 @@ func main() {
 		fs = basicAuth(fs, cfg.username, cfg.password)
 	}
 
+	// 日志记录
+	fs = logRequest(fs)
+
 	http.Handle("/", fs)
 
 	log.Printf("listen address %s", cfg.addr)
@@ -50,26 +58,60 @@ func basicAuth(next http.Handler, user, pass string) http.Handler {
 		const basicPrefix = "Basic "
 		auth := r.Header.Get("Authorization")
 		if !strings.HasPrefix(auth, basicPrefix) {
-			unauthorized(w)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		// 解码 "Basic base64(user:pass)"
 		decoded, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(auth, basicPrefix))
 		if err != nil {
-			unauthorized(w)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		parts := strings.SplitN(string(decoded), ":", 2)
 		if len(parts) != 2 || parts[0] != user || parts[1] != pass {
-			unauthorized(w)
+			w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-// unauthorized 未授权
-func unauthorized(w http.ResponseWriter) {
-	w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
-	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+// 日志记录
+func logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		now := time.Now()
+		w.Header().Add("Cache-Control", "no-cache")
+		next.ServeHTTP(w, r)
+		duration := time.Since(now)
+		log.Printf("remoteAddr：%s，duration： %s，url： %s，userAgent: %s\n", r.RemoteAddr, duration, r.URL, r.Header.Get("User-Agent"))
+	})
+}
+
+// 初始化日志配置
+func init() {
+
+	execPath, _ := os.Executable()
+	execDir := filepath.Dir(execPath)
+	logDir := filepath.Join(execDir, "log")
+	DirInfo, err := os.Stat(logDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			os.MkdirAll(logDir, 0755)
+		} else {
+			log.Fatalf("创建日志目录失败: %v", err)
+		}
+	} else if !DirInfo.IsDir() {
+		os.MkdirAll(logDir, 0755)
+	}
+
+	log.SetFlags(log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile)
+	log.SetOutput(&lumberjack.Logger{
+		Filename:   filepath.Join(logDir, "webShare.log"),
+		MaxSize:    10,
+		MaxAge:     30,
+		MaxBackups: 10,
+	})
 }

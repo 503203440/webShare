@@ -1,3 +1,4 @@
 webShare.exe
 webShare
 *.log
+/log
