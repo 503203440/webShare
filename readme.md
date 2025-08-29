@@ -15,6 +15,11 @@ webShare -addr :8080 -root ./ -username root -password password1234556
 * 构建
   
 ```shell
+# windows
 go build --trimpath --ldflags "-w -s" -o webShare.exe
+
+# linux amd64
+SET GOOS=linux&& SET GOARCH=amd64&& go build --trimpath --ldflags="-w -s" -o webShare_linux_amd64
+
 ```
 
