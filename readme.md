@@ -6,8 +6,8 @@
 webShare -addr :8080 -root ./ -username root -password password1234556
 ```
 >
-> * -addr 监听地址
-> * -root 共享目录
+> * -addr 监听地址（默认：:8080）
+> * -root 共享目录（默认当前shell目录）
 > * -username 用户名（可选）
 > * -password 密码（可选）
 >
