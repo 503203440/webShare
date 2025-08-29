@@ -83,7 +83,9 @@ func basicAuth(next http.Handler, user, pass string) http.Handler {
 func logRequest(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		now := time.Now()
-		w.Header().Add("Cache-Control", "no-cache")
+		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+		w.Header().Set("Pragma", "no-cache")
+		w.Header().Set("Expires", "0")
 		next.ServeHTTP(w, r)
 		duration := time.Since(now)
 		log.Printf("remoteAddr：%s，duration： %s，url： %s，userAgent: %s\n", r.RemoteAddr, duration, r.URL, r.Header.Get("User-Agent"))
