@@ -16,7 +16,7 @@ import (
 
 type config struct {
 	addr     string
-	root     string
+	rootDir  string
 	username string
 	password string
 }
@@ -25,17 +25,17 @@ func main() {
 	cfg := &config{}
 
 	addr := flag.String("addr", ":8080", "监听地址, 例如“:8080”")
-	root := flag.String("root", "./", "根目录地址")
-	username := flag.String("username", "", "可选用户名")
-	password := flag.String("password", "", "可选密码")
+	dir := flag.String("d", "./", "根目录地址")
+	username := flag.String("u", "", "可选用户名")
+	password := flag.String("p", "", "可选密码")
 	flag.Parse()
 
 	cfg.addr = *addr
-	cfg.root = *root
+	cfg.rootDir = *dir
 	cfg.username = *username
 	cfg.password = *password
 
-	fs := http.FileServer(http.Dir(cfg.root))
+	fs := http.FileServer(http.Dir(cfg.rootDir))
 
 	// 如果设置了用户名和密码，才开启 Basic Auth
 	if cfg.username != "" && cfg.password != "" {
