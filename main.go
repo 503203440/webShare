@@ -86,7 +86,7 @@ func logRequest(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		mw := &MyResponseWriter{ResponseWriter: w}
+		mw := &MyResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
 		next.ServeHTTP(mw, r)
 		duration := time.Since(now)
 		log.Printf("url： %s，remoteAddr：%s，duration： %s，statusCode: %d，userAgent: %s\n", r.URL, GetIP(r), duration, mw.statusCode, r.Header.Get("User-Agent"))
