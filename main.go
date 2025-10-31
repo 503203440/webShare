@@ -88,8 +88,19 @@ func logRequest(next http.Handler) http.Handler {
 		w.Header().Set("Expires", "0")
 		next.ServeHTTP(w, r)
 		duration := time.Since(now)
-		log.Printf("remoteAddr：%s，duration： %s，url： %s，userAgent: %s\n", r.RemoteAddr, duration, r.URL, r.Header.Get("User-Agent"))
+		log.Printf("remoteAddr：%s，duration： %s，url： %s，userAgent: %s\n", GetIP(r), duration, r.URL, r.Header.Get("User-Agent"))
 	})
+}
+
+func GetIP(r *http.Request) string {
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip = r.Header.Get("X-Forwarded-For")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
 }
 
 // 初始化日志配置
