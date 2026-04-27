@@ -219,10 +219,32 @@ func logRequest(next http.Handler) http.Handler {
 		w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
 		w.Header().Set("Pragma", "no-cache")
 		w.Header().Set("Expires", "0")
-		next.ServeHTTP(w, r)
+		mw := &MyResponseWriter{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(mw, r)
 		duration := time.Since(now)
-		log.Printf("remoteAddr：%s，duration： %s，url： %s，userAgent: %s\n", r.RemoteAddr, duration, r.URL, r.Header.Get("User-Agent"))
+		log.Printf("url： %s，remoteAddr：%s，duration： %s，statusCode: %d，userAgent: %s\n", r.URL, GetIP(r), duration, mw.statusCode, r.Header.Get("User-Agent"))
 	})
+}
+
+type MyResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (w *MyResponseWriter) WriteHeader(code int) {
+	w.statusCode = code
+	w.ResponseWriter.WriteHeader(code)
+}
+
+func GetIP(r *http.Request) string {
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip = r.Header.Get("X-Forwarded-For")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
 }
 
 func init() {
