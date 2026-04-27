@@ -363,6 +363,11 @@
         }
 
         // Drag and drop
+        uploadZone.addEventListener('dragenter', function(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
         uploadZone.addEventListener('dragover', function(e) {
             e.preventDefault();
             uploadZone.classList.add('dragover');
@@ -464,15 +469,26 @@
                 btn.textContent = '刷新';
 
                 if (xhr.status === 200) {
-                    var files = JSON.parse(xhr.responseText);
-                    renderFileList(files, currentPath);
+                    try {
+                        var files = JSON.parse(xhr.responseText);
+                        renderFileList(files, currentPath);
+                    } catch(e) {
+                        showToast('文件列表数据解析失败', 'error');
+                    }
+                } else {
+                    var errMsg = '加载文件列表失败';
+                    try {
+                        var resp = JSON.parse(xhr.responseText);
+                        errMsg = resp.error || errMsg;
+                    } catch(e) {}
+                    showToast(errMsg, 'error');
                 }
             };
 
             xhr.onerror = function() {
                 btn.disabled = false;
                 btn.textContent = '刷新';
-                showToast('加载文件列表失败', 'error');
+                showToast('加载文件列表失败，网络错误', 'error');
             };
 
             xhr.send();

@@ -239,7 +239,13 @@ func (w *MyResponseWriter) WriteHeader(code int) {
 func GetIP(r *http.Request) string {
 	ip := r.Header.Get("X-Real-IP")
 	if ip == "" {
-		ip = r.Header.Get("X-Forwarded-For")
+		if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+			if idx := strings.Index(forwarded, ","); idx != -1 {
+				ip = strings.TrimSpace(forwarded[:idx])
+			} else {
+				ip = forwarded
+			}
+		}
 	}
 	if ip == "" {
 		ip = r.RemoteAddr
