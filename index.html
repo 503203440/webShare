@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Share - 文件共享</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: #f0f2f5;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 32px 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 8px;
+        }
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Upload Area */
+        .upload-zone {
+            border: 2px dashed #d9d9d9;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #fafafa;
+        }
+        .upload-zone:hover {
+            border-color: #4096ff;
+            background: #f0f5ff;
+        }
+        .upload-zone.dragover {
+            border-color: #4096ff;
+            background: #e6f4ff;
+        }
+        .upload-zone.dragover .upload-icon {
+            transform: scale(1.1);
+        }
+        .upload-icon {
+            font-size: 48px;
+            color: #4096ff;
+            margin-bottom: 16px;
+            display: block;
+            transition: transform 0.3s ease;
+        }
+        .upload-zone p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .upload-zone .hint {
+            color: #999;
+            font-size: 12px;
+            margin-top: 8px;
+        }
+        .upload-zone input[type="file"] {
+            display: none;
+        }
+
+        /* File List */
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .file-count {
+            font-size: 13px;
+            color: #999;
+        }
+        .refresh-btn {
+            background: none;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            padding: 6px 16px;
+            font-size: 13px;
+            color: #666;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .refresh-btn:hover {
+            border-color: #4096ff;
+            color: #4096ff;
+        }
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .file-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .file-table th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: #999;
+            text-transform: uppercase;
+            padding: 10px 12px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        .file-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f5f5f5;
+            font-size: 14px;
+        }
+        .file-table tr:hover td {
+            background: #fafafa;
+        }
+        .file-name {
+            color: #1a1a1a;
+            word-break: break-all;
+        }
+        .file-name.folder {
+            color: #4096ff;
+        }
+        .file-size {
+            color: #999;
+            white-space: nowrap;
+        }
+        .file-time {
+            color: #999;
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        .file-actions {
+            white-space: nowrap;
+            text-align: right;
+        }
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            background: #f5f5f5;
+            border: 1px solid #d9d9d9;
+            border-radius: 4px;
+            font-size: 13px;
+            color: #333;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .download-btn:hover {
+            background: #e6f4ff;
+            border-color: #4096ff;
+            color: #4096ff;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #ccc;
+        }
+        .empty-state p {
+            font-size: 14px;
+            margin-top: 8px;
+            color: #bbb;
+        }
+
+        /* Upload Progress */
+        .upload-progress {
+            margin-top: 16px;
+            display: none;
+        }
+        .upload-progress.active {
+            display: block;
+        }
+        .progress-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .progress-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4096ff, #1677ff);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+            width: 0;
+        }
+        .progress-text {
+            white-space: nowrap;
+            min-width: 40px;
+            text-align: right;
+            font-size: 12px;
+            color: #999;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #fff;
+            z-index: 1000;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .toast.success {
+            background: #52c41a;
+        }
+        .toast.error {
+            background: #ff4d4f;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 16px 12px;
+            }
+            .card {
+                padding: 16px;
+            }
+            .file-table th:nth-child(2),
+            .file-table td:nth-child(2),
+            .file-table th:nth-child(3),
+            .file-table td:nth-child(3) {
+                display: none;
+            }
+            .upload-zone {
+                padding: 24px 16px;
+            }
+            .upload-zone .upload-icon {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Web Share</h1>
+            <p>文件共享服务</p>
+        </div>
+
+        <div class="card">
+            <div class="card-title">上传文件</div>
+            <div class="upload-zone" id="uploadZone">
+                <span class="upload-icon">&#x2B06;</span>
+                <p>拖拽文件到此处上传</p>
+                <p class="hint">或点击此区域选择文件</p>
+                <input type="file" id="fileInput" multiple>
+            </div>
+            <div class="upload-progress" id="uploadProgress"></div>
+        </div>
+
+        <div class="card">
+            <div class="file-list-header">
+                <div>
+                    <span class="card-title">文件列表</span>
+                    <span class="file-count" id="fileCount"></span>
+                </div>
+                <button class="refresh-btn" id="refreshBtn" onclick="loadFiles()">刷新</button>
+            </div>
+            <table class="file-table">
+                <thead>
+                    <tr>
+                        <th>文件名</th>
+                        <th>大小</th>
+                        <th>修改时间</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="fileListBody"></tbody>
+            </table>
+            <div class="empty-state" id="emptyState">
+                <p>暂无文件</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        var currentPath = '';
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const uploadProgress = document.getElementById('uploadProgress');
+        const fileListBody = document.getElementById('fileListBody');
+        const emptyState = document.getElementById('emptyState');
+        const fileCount = document.getElementById('fileCount');
+
+        function formatSize(bytes) {
+            if (bytes === 0) return '0 B';
+            const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+            const k = 1024;
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + units[i];
+        }
+
+        function formatTime(t) {
+            if (!t) return '-';
+            return t;
+        }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast ' + type + ' show';
+            setTimeout(function() {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.appendChild(document.createTextNode(text));
+            return div.innerHTML;
+        }
+
+        // Drag and drop
+        uploadZone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                uploadFiles(files, currentPath);
+            }
+        });
+
+        uploadZone.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                uploadFiles(this.files, currentPath);
+                this.value = '';
+            }
+        });
+
+        function uploadFiles(files, dir) {
+            uploadProgress.innerHTML = '';
+            uploadProgress.classList.add('active');
+
+            for (var i = 0; i < files.length; i++) {
+                (function(file, idx) {
+                    var item = document.createElement('div');
+                    item.className = 'progress-item';
+                    item.innerHTML =
+                        '<span class="progress-name">' + escapeHtml(file.name) + '</span>' +
+                        '<div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-' + idx + '"></div></div>' +
+                        '<span class="progress-text" id="progressText-' + idx + '">0%</span>';
+                    uploadProgress.appendChild(item);
+
+                    var formData = new FormData();
+                    formData.append('file', file);
+
+                    var xhr = new XMLHttpRequest();
+                    var query = dir ? '?path=' + encodeURIComponent(dir) : '';
+                    xhr.open('POST', '/upload' + query, true);
+
+                    xhr.upload.onprogress = function(e) {
+                        if (e.lengthComputable) {
+                            var pct = Math.round((e.loaded / e.total) * 100);
+                            document.getElementById('progress-' + idx).style.width = pct + '%';
+                            document.getElementById('progressText-' + idx).textContent = pct + '%';
+                        }
+                    };
+
+                    xhr.onload = function() {
+                        if (xhr.status === 200) {
+                            document.getElementById('progress-' + idx).style.width = '100%';
+                            document.getElementById('progressText-' + idx).textContent = '完成';
+                            showToast('"' + file.name + '" 上传成功', 'success');
+                            loadFiles(currentPath);
+                        } else {
+                            var errMsg = '上传失败';
+                            try {
+                                var resp = JSON.parse(xhr.responseText);
+                                errMsg = resp.error || errMsg;
+                            } catch(e) {}
+                            document.getElementById('progressText-' + idx).textContent = '失败';
+                            showToast('"' + file.name + '" ' + errMsg, 'error');
+                        }
+                    };
+
+                    xhr.onerror = function() {
+                        document.getElementById('progressText-' + idx).textContent = '失败';
+                        showToast('"' + file.name + '" 上传失败，网络错误', 'error');
+                    };
+
+                    xhr.send(formData);
+                })(files[i], i);
+            }
+        }
+
+        function loadFiles(dir) {
+            currentPath = dir || '';
+            var btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = '加载中...';
+
+            var xhr = new XMLHttpRequest();
+            var query = currentPath ? '?path=' + encodeURIComponent(currentPath) : '';
+            xhr.open('GET', '/api/files' + query, true);
+
+            xhr.onload = function() {
+                btn.disabled = false;
+                btn.textContent = '刷新';
+
+                if (xhr.status === 200) {
+                    var files = JSON.parse(xhr.responseText);
+                    renderFileList(files, currentPath);
+                }
+            };
+
+            xhr.onerror = function() {
+                btn.disabled = false;
+                btn.textContent = '刷新';
+                showToast('加载文件列表失败', 'error');
+            };
+
+            xhr.send();
+        }
+
+        function navigateTo(dir) {
+            loadFiles(dir);
+        }
+
+        function renderFileList(files, dir) {
+            fileListBody.innerHTML = '';
+
+            if (!files || files.length === 0) {
+                if (dir) {
+                    var tr = document.createElement('tr');
+                    tr.innerHTML = '<td class="file-name folder" style="cursor:pointer" onclick="navigateTo(\'' + escapeHtml(getParentPath(dir)) + '\')">..</td><td>-</td><td>-</td><td></td>';
+                    fileListBody.appendChild(tr);
+                }
+                emptyState.style.display = dir ? 'none' : 'block';
+                fileCount.textContent = dir ? '(空目录)' : '(0 个文件)';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            fileCount.textContent = '(' + files.length + ' 个文件)';
+
+            if (dir) {
+                var tr = document.createElement('tr');
+                tr.innerHTML = '<td class="file-name folder" style="cursor:pointer" onclick="navigateTo(\'' + escapeHtml(getParentPath(dir)) + '\')">..</td><td class="file-size">-</td><td class="file-time">-</td><td></td>';
+                fileListBody.appendChild(tr);
+            }
+
+            for (var i = 0; i < files.length; i++) {
+                var f = files[i];
+                var tr = document.createElement('tr');
+                if (f.isDir) {
+                    var childPath = dir ? dir + '/' + f.name : f.name;
+                    tr.innerHTML =
+                        '<td class="file-name folder" style="cursor:pointer" onclick="navigateTo(\'' + escapeHtml(childPath) + '\')">' + escapeHtml(f.name) + '</td>' +
+                        '<td class="file-size">-</td>' +
+                        '<td class="file-time">' + formatTime(f.modTime) + '</td>' +
+                        '<td></td>';
+                } else {
+                    var filePath = dir ? dir + '/' + f.name : f.name;
+                    tr.innerHTML =
+                        '<td class="file-name">' + escapeHtml(f.name) + '</td>' +
+                        '<td class="file-size">' + formatSize(f.size) + '</td>' +
+                        '<td class="file-time">' + formatTime(f.modTime) + '</td>' +
+                        '<td class="file-actions"><a class="download-btn" href="/' + encodeURIComponent(filePath) + '" download>下载</a></td>';
+                }
+                fileListBody.appendChild(tr);
+            }
+        }
+
+        function getParentPath(dir) {
+            if (!dir) return '';
+            var parts = dir.replace(/\/+$/, '').split('/');
+            parts.pop();
+            return parts.join('/');
+        }
+
+        // Initial load
+        loadFiles('');
+    </script>
+</body>
+</html>

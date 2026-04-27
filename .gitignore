@@ -2,3 +2,4 @@ webShare.exe
 webShare
 *.log
 /log
+.DS_Store
