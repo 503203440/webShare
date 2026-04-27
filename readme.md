@@ -1,25 +1,71 @@
-# 开放某个目录通过web共享
+# WebShare
 
-* 使用方法
+`WebShare` 是一个轻量级、高性能的单文件 Web 服务器，旨在快速通过 Web 界面共享本地目录。它支持文件浏览、上传，并提供可选的基础身份验证（Basic Auth）保护。
 
-```shell
-webShare -addr :8080 -root ./ -username root -password password1234556
+## ✨ 特性
+
+-   **单文件部署**：静态资源已嵌入二进制文件，无需额外配置环境。
+-   **响应式界面**：内置简洁的 Web 界面，支持移动端和桌面端访问。
+-   **目录浏览**：实时查看共享目录结构及其详细信息（大小、修改时间）。
+-   **文件上传**：支持将文件直接上传至服务器的指定子目录。
+-   **安全保护**：
+    -   支持 Basic Auth 身份验证。
+    -   内置路径越权检查，防止目录遍历攻击。
+-   **自动日志**：集成日志轮转功能，记录每次请求的详细信息。
+-   **跨平台**：支持 Windows、Linux 等多种操作系统。
+
+## 🚀 快速开始
+
+### 运行
+
+你可以直接运行编译好的二进制文件：
+
+```bash
+./webShare -addr :8080 -d ./shared_folder -u admin -p 123456
 ```
->
-> * -addr 监听地址（默认：:8080）
-> * -root 共享目录（默认当前shell目录）
-> * -username 用户名（可选）
-> * -password 密码（可选）
->
 
-* 构建
-  
-```shell
-# windows
-go build --trimpath --ldflags "-w -s" -o webShare.exe
+### 访问
 
-# linux amd64
-SET GOOS=linux&& SET GOARCH=amd64&& go build --trimpath --ldflags="-w -s" -o webShare_linux_amd64
+启动后，在浏览器中访问 `http://localhost:8080`。如果设置了用户名和密码，系统将提示你进行登录。
 
+## ⚙️ 命令行参数
+
+| 参数 | 说明 | 默认值 |
+| :--- | :--- | :--- |
+| `-addr` | 服务监听地址（例如 `:8080` 或 `127.0.0.1:8080`） | `:8080` |
+| `-d` | 要共享的根目录路径 | `./` |
+| `-u` | 访问所需的用户名（为空则不启用验证） | `""` |
+| `-p` | 访问所需的密码 | `""` |
+
+## 🛠️ 构建指南
+
+如果你想自行编译项目，请确保已安装 Go 环境（推荐 1.16+）：
+
+### Windows
+```powershell
+go build -trimpath -ldflags "-w -s" -o webShare.exe
 ```
 
+### Linux (AMD64)
+```bash
+# 在 Windows 上交叉编译
+SET GOOS=linux
+SET GOARCH=amd64
+go build -trimpath -ldflags="-w -s" -o webShare_linux_amd64
+```
+
+### macOS
+```bash
+go build -trimpath -ldflags="-w -s" -o webShare_darwin
+```
+
+## 📝 日志说明
+
+程序启动后会自动在可执行文件同级目录下创建 `log/` 文件夹。
+-   日志文件名为 `webShare.log`。
+-   支持自动轮转：单个日志最大 10MB，最多保留 10 个备份，保存期限 30 天。
+
+## ⚠️ 安全说明
+
+-   本工具设计用于内网或临时文件共享，请勿在无有效保护的情况下直接暴露在公网。
+-   建议始终设置 `-u` 和 `-p` 参数以启用身份验证。
