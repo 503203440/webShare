@@ -3,3 +3,5 @@ webShare
 *.log
 /log
 .DS_Store
+.claude/
+CLAUDE.md

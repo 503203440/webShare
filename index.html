@@ -183,6 +183,132 @@
             border-color: #4096ff;
             color: #4096ff;
         }
+        .preview-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            background: none;
+            border: none;
+            font-size: 13px;
+            color: #4096ff;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+        .preview-btn:hover {
+            color: #1677ff;
+        }
+        .action-divider {
+            color: #d9d9d9;
+            margin: 0 4px;
+            font-size: 12px;
+        }
+
+        /* Preview Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #fff;
+            border-radius: 12px;
+            max-width: 90vw;
+            max-height: 90vh;
+            width: 100%;
+            overflow: auto;
+            position: relative;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid #f0f0f0;
+            position: sticky;
+            top: 0;
+            background: #fff;
+            z-index: 1;
+        }
+        .modal-header h3 {
+            font-size: 15px;
+            font-weight: 600;
+            color: #1a1a1a;
+            word-break: break-all;
+            margin-right: 16px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 22px;
+            color: #999;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .modal-body {
+            padding: 20px;
+            min-height: 100px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-body img {
+            max-width: 100%;
+            max-height: 70vh;
+            object-fit: contain;
+            border-radius: 4px;
+        }
+        .modal-body pre {
+            width: 100%;
+            max-height: 70vh;
+            overflow: auto;
+            background: #f6f8fa;
+            border-radius: 6px;
+            padding: 16px;
+            font-size: 13px;
+            font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            margin: 0;
+        }
+        .modal-body .unsupported {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+            font-size: 14px;
+        }
+        .modal-body .unsupported .icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
+        }
+        .preview-loading {
+            color: #999;
+            font-size: 14px;
+            padding: 40px;
+        }
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -324,6 +450,19 @@
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Preview Modal -->
+    <div class="modal-overlay" id="previewModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="previewTitle">预览</h3>
+                <button class="modal-close" onclick="closePreview()">&times;</button>
+            </div>
+            <div class="modal-body" id="previewBody">
+                <span class="preview-loading">加载中...</span>
+            </div>
+        </div>
+    </div>
 
     <script>
         var currentPath = '';
@@ -537,7 +676,7 @@
                         '<td class="file-name">' + escapeHtml(f.name) + '</td>' +
                         '<td class="file-size">' + formatSize(f.size) + '</td>' +
                         '<td class="file-time">' + formatTime(f.modTime) + '</td>' +
-                        '<td class="file-actions"><a class="download-btn" href="/' + encodeURIComponent(filePath) + '" download>下载</a></td>';
+                        '<td class="file-actions"><button class="preview-btn" onclick="previewFile(\'' + escapeHtml(filePath) + '\')">预览</button><span class="action-divider">|</span><a class="download-btn" href="/' + encodeURIComponent(filePath) + '" download>下载</a></td>';
                 }
                 fileListBody.appendChild(tr);
             }
@@ -548,6 +687,70 @@
             var parts = dir.replace(/\/+$/, '').split('/');
             parts.pop();
             return parts.join('/');
+        }
+
+        // Preview
+        var previewableImages = ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp', 'bmp', 'ico'];
+        var previewableText = ['txt', 'md', 'json', 'xml', 'yml', 'yaml', 'log', 'csv', 'ini', 'cfg', 'conf',
+            'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
+            'go', 'py', 'java', 'c', 'cpp', 'h', 'hpp', 'rs', 'rb', 'php', 'sh', 'bat', 'ps1',
+            'toml', 'sql', 'env', 'editorconfig', 'gitignore'];
+
+        function getFileExtension(filename) {
+            var idx = filename.lastIndexOf('.');
+            return idx !== -1 ? filename.substring(idx + 1).toLowerCase() : '';
+        }
+
+        function closePreview() {
+            document.getElementById('previewModal').classList.remove('active');
+            document.getElementById('previewBody').innerHTML = '<span class="preview-loading">加载中...</span>';
+        }
+
+        // Close modal on overlay click
+        document.getElementById('previewModal').addEventListener('click', function(e) {
+            if (e.target === this) closePreview();
+        });
+
+        // Close modal on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closePreview();
+        });
+
+        function previewFile(filePath) {
+            var modal = document.getElementById('previewModal');
+            var title = document.getElementById('previewTitle');
+            var body = document.getElementById('previewBody');
+
+            title.textContent = filePath.split('/').pop() || filePath;
+            body.innerHTML = '<span class="preview-loading">加载中...</span>';
+            modal.classList.add('active');
+
+            var ext = getFileExtension(filePath);
+
+            if (previewableImages.indexOf(ext) !== -1) {
+                body.innerHTML = '<img src="/' + encodeURIComponent(filePath) + '" alt="' + escapeHtml(filePath) + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'unsupported\\\'><span class=\\\'icon\\\'>&#9888;</span><p>图片加载失败</p></div>\'" />';
+                return;
+            }
+
+            if (previewableText.indexOf(ext) !== -1) {
+                var xhr = new XMLHttpRequest();
+                xhr.open('GET', '/' + encodeURIComponent(filePath), true);
+
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        body.innerHTML = '<pre>' + escapeHtml(xhr.responseText) + '</pre>';
+                    } else {
+                        body.innerHTML = '<div class="unsupported"><span class="icon">&#9888;</span><p>文件加载失败</p></div>';
+                    }
+                };
+                xhr.onerror = function() {
+                    body.innerHTML = '<div class="unsupported"><span class="icon">&#9888;</span><p>网络错误</p></div>';
+                };
+                xhr.send();
+                return;
+            }
+
+            body.innerHTML = '<div class="unsupported"><span class="icon">&#128196;</span><p>该文件类型暂不支持预览</p></div>';
         }
 
         // Initial load
