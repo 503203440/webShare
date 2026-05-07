@@ -278,6 +278,11 @@
             object-fit: contain;
             border-radius: 4px;
         }
+        .modal-body video {
+            max-width: 100%;
+            max-height: 70vh;
+            border-radius: 4px;
+        }
         .modal-body pre {
             width: 100%;
             max-height: 70vh;
@@ -695,6 +700,7 @@
             'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
             'go', 'py', 'java', 'c', 'cpp', 'h', 'hpp', 'rs', 'rb', 'php', 'sh', 'bat', 'ps1',
             'toml', 'sql', 'env', 'editorconfig', 'gitignore'];
+        var previewableVideo = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', 'flv', 'wmv', 'm4v', '3gp'];
 
         function getFileExtension(filename) {
             var idx = filename.lastIndexOf('.');
@@ -729,6 +735,11 @@
 
             if (previewableImages.indexOf(ext) !== -1) {
                 body.innerHTML = '<img src="/' + encodeURIComponent(filePath) + '" alt="' + escapeHtml(filePath) + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'unsupported\\\'><span class=\\\'icon\\\'>&#9888;</span><p>图片加载失败</p></div>\'" />';
+                return;
+            }
+
+            if (previewableVideo.indexOf(ext) !== -1) {
+                body.innerHTML = '<video controls autoplay src="/' + encodeURIComponent(filePath) + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'unsupported\\\'><span class=\\\'icon\\\'>&#9888;</span><p>视频加载失败</p></div>\'">您的浏览器不支持视频播放</video>';
                 return;
             }
 
