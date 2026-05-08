@@ -700,7 +700,7 @@
             'js', 'ts', 'jsx', 'tsx', 'html', 'htm', 'css', 'scss', 'less',
             'go', 'py', 'java', 'c', 'cpp', 'h', 'hpp', 'rs', 'rb', 'php', 'sh', 'bat', 'ps1',
             'toml', 'sql', 'env', 'editorconfig', 'gitignore'];
-        var previewableVideo = ['mp4', 'webm', 'ogg', 'mov', 'mkv', 'avi', 'flv', 'wmv', 'm4v', '3gp'];
+        var previewableVideo = ['mp4', 'webm', 'ogg'];
 
         function getFileExtension(filename) {
             var idx = filename.lastIndexOf('.');
@@ -739,7 +739,7 @@
             }
 
             if (previewableVideo.indexOf(ext) !== -1) {
-                body.innerHTML = '<video controls autoplay src="/' + encodeURIComponent(filePath) + '" onerror="this.parentElement.innerHTML=\'<div class=\\\'unsupported\\\'><span class=\\\'icon\\\'>&#9888;</span><p>视频加载失败</p></div>\'">您的浏览器不支持视频播放</video>';
+                body.innerHTML = '<video controls style="max-width:100%;max-height:70vh;border-radius:4px;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><source src="/' + encodeURIComponent(filePath) + '" type="video/' + ext + '">您的浏览器不支持视频播放</video><div class="unsupported" style="display:none"><span class="icon">&#9888;</span><p>视频加载失败，可能原因：<br>1. 视频编码格式不被浏览器支持<br>2. 文件损坏或不存在</p></div>';
                 return;
             }
 
