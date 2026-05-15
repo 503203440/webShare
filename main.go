@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -25,6 +28,84 @@ type config struct {
 	rootDir  string
 	username string
 	password string
+}
+
+// Chat room types
+type ChatMessage struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Content  string `json:"content"`
+	Time     string `json:"time"`
+	Type     string `json:"type"`
+}
+
+const (
+	chatMaxTextLen  = 500
+	chatMaxMessages = 500
+)
+
+var (
+	chatMessages []ChatMessage
+	chatMu       sync.RWMutex
+	chatMsgID    atomic.Int64
+)
+
+func handleChatSend(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username string `json:"username"`
+		Content  string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "请求格式错误"})
+		return
+	}
+	content := strings.TrimSpace(req.Content)
+	if content == "" || len(content) > chatMaxTextLen {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "消息内容无效"})
+		return
+	}
+	if req.Username == "" {
+		req.Username = "匿名"
+	}
+
+	msg := ChatMessage{
+		ID:       int(chatMsgID.Add(1)),
+		Username: req.Username,
+		Content:  content,
+		Time:     time.Now().Format("2006-01-02 15:04:05"),
+		Type:     "message",
+	}
+
+	chatMu.Lock()
+	chatMessages = append(chatMessages, msg)
+	if len(chatMessages) > chatMaxMessages {
+		chatMessages = chatMessages[len(chatMessages)-chatMaxMessages:]
+	}
+	chatMu.Unlock()
+
+	writeJSON(w, http.StatusOK, msg)
+}
+
+func handleChatMessages(w http.ResponseWriter, r *http.Request) {
+	after := 0
+	if a := r.URL.Query().Get("after"); a != "" {
+		after, _ = strconv.Atoi(a)
+	}
+
+	chatMu.RLock()
+	var result []ChatMessage
+	for _, m := range chatMessages {
+		if m.ID > after {
+			result = append(result, m)
+		}
+	}
+	chatMu.RUnlock()
+
+	if result == nil {
+		result = []ChatMessage{}
+	}
+
+	writeJSON(w, http.StatusOK, result)
 }
 
 func main() {
@@ -49,6 +130,10 @@ func main() {
 			handleUpload(cfg.rootDir)(w, r)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/files":
 			handleFileList(cfg.rootDir)(w, r)
+		case r.Method == http.MethodPost && r.URL.Path == "/api/chat/send":
+			handleChatSend(w, r)
+		case r.Method == http.MethodGet && r.URL.Path == "/api/chat/messages":
+			handleChatMessages(w, r)
 		case r.URL.Path == "/":
 			serveIndex(w, r)
 		default:
