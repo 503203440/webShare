@@ -28,6 +28,8 @@ type config struct {
 	rootDir  string
 	username string
 	password string
+	cert     string
+	key      string
 }
 
 // Chat room types
@@ -115,12 +117,16 @@ func main() {
 	dir := flag.String("d", "./", "根目录地址")
 	username := flag.String("u", "", "可选用户名")
 	password := flag.String("p", "", "可选密码")
+	cert := flag.String("cert", "", "可选TLS证书路径")
+	key := flag.String("key", "", "可选TLS密钥路径")
 	flag.Parse()
 
 	cfg.addr = *addr
 	cfg.rootDir = *dir
 	cfg.username = *username
 	cfg.password = *password
+	cfg.cert = *cert
+	cfg.key = *key
 
 	fileServer := http.FileServer(http.Dir(cfg.rootDir))
 
@@ -147,6 +153,10 @@ func main() {
 	handler = logRequest(handler)
 
 	log.Printf("listen address %s", cfg.addr)
+	if cfg.cert != "" && cfg.key != "" {
+		log.Printf("TLS enabled with cert=%s key=%s", cfg.cert, cfg.key)
+		log.Fatal(http.ListenAndServeTLS(cfg.addr, cfg.cert, cfg.key, handler))
+	}
 	log.Fatal(http.ListenAndServe(cfg.addr, handler))
 }
 
