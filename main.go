@@ -21,6 +21,7 @@ import (
 )
 
 //go:embed index.html
+//go:embed static/mpegts.js
 var embeddedFiles embed.FS
 
 type config struct {
@@ -142,6 +143,14 @@ func main() {
 			handleChatMessages(w, r)
 		case r.URL.Path == "/":
 			serveIndex(w, r)
+		case r.URL.Path == "/api/mpegts.js":
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			data, err := embeddedFiles.ReadFile("static/mpegts.js")
+			if err != nil {
+				http.Error(w, "Not Found", http.StatusNotFound)
+				return
+			}
+			w.Write(data)
 		default:
 			fileServer.ServeHTTP(w, r)
 		}

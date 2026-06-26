@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Web Share - 文件共享</title>
+    <script src="/api/mpegts.js"></script>
     <style>
         * {
             margin: 0;
@@ -671,6 +672,7 @@
 
     <script>
         var currentPath = '';
+        var currentPlayer = null;
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('fileInput');
         const uploadProgress = document.getElementById('uploadProgress');
@@ -908,6 +910,10 @@
         }
 
         function closePreview() {
+            if (currentPlayer) {
+                currentPlayer.destroy();
+                currentPlayer = null;
+            }
             document.getElementById('previewModal').classList.remove('active');
             document.getElementById('previewBody').innerHTML = '<span class="preview-loading">加载中...</span>';
         }
@@ -940,6 +946,23 @@
 
             if (previewableVideo.indexOf(ext) !== -1) {
                 body.innerHTML = '<video controls style="max-width:100%;max-height:70vh;border-radius:4px;" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><source src="/' + encodeURIComponent(filePath) + '" type="video/' + ext + '">您的浏览器不支持视频播放</video><div class="unsupported" style="display:none"><span class="icon">&#9888;</span><p>视频加载失败，可能原因：<br>1. 视频编码格式不被浏览器支持<br>2. 文件损坏或不存在</p></div>';
+                return;
+            }
+
+            if (ext === 'flv') {
+                body.innerHTML = '';
+                var video = document.createElement('video');
+                video.controls = true;
+                video.style.maxWidth = '100%';
+                video.style.maxHeight = '70vh';
+                video.style.width = '100%';
+                body.appendChild(video);
+                currentPlayer = mpegts.createPlayer({
+                    type: 'flv',
+                    url: '/' + encodeURIComponent(filePath)
+                });
+                currentPlayer.attachMediaElement(video);
+                currentPlayer.load();
                 return;
             }
 
