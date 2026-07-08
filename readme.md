@@ -43,7 +43,7 @@
 
 ### Windows
 ```powershell
-go build -trimpath -ldflags "-w -s" -o webShare.exe
+go build -trimpath -ldflags "-w -s" -o webshare.exe
 ```
 
 ### Linux (AMD64)
@@ -51,12 +51,12 @@ go build -trimpath -ldflags "-w -s" -o webShare.exe
 # 在 Windows 上交叉编译
 SET GOOS=linux
 SET GOARCH=amd64
-go build -trimpath -ldflags="-w -s" -o webShare_linux_amd64
+go build -trimpath -ldflags="-w -s" -o webshare_linux_amd64
 ```
 
 ### macOS
 ```bash
-go build -trimpath -ldflags="-w -s" -o webShare_darwin
+go build -trimpath -ldflags="-w -s" -o webshare_darwin
 ```
 
 ## 📝 日志说明

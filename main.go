@@ -25,12 +25,13 @@ import (
 var embeddedFiles embed.FS
 
 type config struct {
-	addr     string
-	rootDir  string
-	username string
-	password string
-	cert     string
-	key      string
+	addr         string
+	rootDir      string
+	username     string
+	password     string
+	cert         string
+	key          string
+	maxUploadGB  int64
 }
 
 // Chat room types
@@ -120,6 +121,7 @@ func main() {
 	password := flag.String("p", "", "可选密码")
 	cert := flag.String("cert", "", "可选TLS证书路径")
 	key := flag.String("key", "", "可选TLS密钥路径")
+	maxUpload := flag.Int64("max-upload", 1, "最大上传文件大小（GB）")
 	flag.Parse()
 
 	cfg.addr = *addr
@@ -128,13 +130,14 @@ func main() {
 	cfg.password = *password
 	cfg.cert = *cert
 	cfg.key = *key
+	cfg.maxUploadGB = *maxUpload
 
 	fileServer := http.FileServer(http.Dir(cfg.rootDir))
 
 	var handler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodPost && r.URL.Path == "/upload":
-			handleUpload(cfg.rootDir)(w, r)
+			handleUpload(cfg)(w, r)
 		case r.Method == http.MethodGet && r.URL.Path == "/api/files":
 			handleFileList(cfg.rootDir)(w, r)
 		case r.Method == http.MethodPost && r.URL.Path == "/api/chat/send":
@@ -179,9 +182,9 @@ func serveIndex(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func handleUpload(rootDir string) http.HandlerFunc {
+func handleUpload(cfg *config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 2<<30)
+		r.Body = http.MaxBytesReader(w, r.Body, cfg.maxUploadGB<<30)
 
 		err := r.ParseMultipartForm(32 << 20)
 		if err != nil {
@@ -203,12 +206,12 @@ func handleUpload(rootDir string) http.HandlerFunc {
 			return
 		}
 
-		absRoot, _ := filepath.Abs(rootDir)
+		absRoot, _ := filepath.Abs(cfg.rootDir)
 		subPath := filepath.Clean(r.URL.Query().Get("path"))
 		if subPath == "." || subPath == "/" {
 			subPath = ""
 		}
-		dstDir := filepath.Join(rootDir, subPath)
+		dstDir := filepath.Join(cfg.rootDir, subPath)
 		dstPath := filepath.Join(dstDir, safeName)
 		absDstPath, _ := filepath.Abs(dstPath)
 
