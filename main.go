@@ -36,16 +36,17 @@ type config struct {
 
 // Chat room types
 type ChatMessage struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Content  string `json:"content"`
-	Time     string `json:"time"`
-	Type     string `json:"type"`
+	ID        int       `json:"id"`
+	Username  string    `json:"username"`
+	Content   string    `json:"content"`
+	Time      string    `json:"time"`
+	Type      string    `json:"type"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 const (
-	chatMaxTextLen  = 500
 	chatMaxMessages = 500
+	chatTTL         = 24 * time.Hour
 )
 
 var (
@@ -54,7 +55,42 @@ var (
 	chatMsgID    atomic.Int64
 )
 
+// pruneChatMessagesLocked removes messages older than 24h and trims messages over 500.
+// Caller must hold chatMu.Lock().
+func pruneChatMessagesLocked() {
+	cutoff := time.Now().Add(-chatTTL)
+	idx := 0
+	for idx < len(chatMessages) && chatMessages[idx].CreatedAt.Before(cutoff) {
+		idx++
+	}
+	if idx > 0 {
+		for i := 0; i < idx; i++ {
+			chatMessages[i] = ChatMessage{}
+		}
+		chatMessages = chatMessages[idx:]
+	}
+	if len(chatMessages) > chatMaxMessages {
+		trim := len(chatMessages) - chatMaxMessages
+		for i := 0; i < trim; i++ {
+			chatMessages[i] = ChatMessage{}
+		}
+		chatMessages = chatMessages[trim:]
+	}
+}
+
+func initChatCleaner() {
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		for range ticker.C {
+			chatMu.Lock()
+			pruneChatMessagesLocked()
+			chatMu.Unlock()
+		}
+	}()
+}
+
 func handleChatSend(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 10<<20)
 	var req struct {
 		Username string `json:"username"`
 		Content  string `json:"content"`
@@ -64,26 +100,30 @@ func handleChatSend(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	content := strings.TrimSpace(req.Content)
-	if content == "" || len(content) > chatMaxTextLen {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "消息内容无效"})
+	if content == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "消息内容不能为空"})
 		return
 	}
 	if req.Username == "" {
 		req.Username = "匿名"
 	}
 
+	now := time.Now()
 	msg := ChatMessage{
-		ID:       int(chatMsgID.Add(1)),
-		Username: req.Username,
-		Content:  content,
-		Time:     time.Now().Format("2006-01-02 15:04:05"),
-		Type:     "message",
+		ID:        int(chatMsgID.Add(1)),
+		Username:  req.Username,
+		Content:   content,
+		Time:      now.Format("2006-01-02 15:04:05"),
+		Type:      "message",
+		CreatedAt: now,
 	}
 
 	chatMu.Lock()
+	pruneChatMessagesLocked()
 	chatMessages = append(chatMessages, msg)
 	if len(chatMessages) > chatMaxMessages {
-		chatMessages = chatMessages[len(chatMessages)-chatMaxMessages:]
+		chatMessages[0] = ChatMessage{}
+		chatMessages = chatMessages[1:]
 	}
 	chatMu.Unlock()
 
@@ -96,10 +136,12 @@ func handleChatMessages(w http.ResponseWriter, r *http.Request) {
 		after, _ = strconv.Atoi(a)
 	}
 
+	cutoff := time.Now().Add(-chatTTL)
+
 	chatMu.RLock()
 	var result []ChatMessage
 	for _, m := range chatMessages {
-		if m.ID > after {
+		if m.ID > after && !m.CreatedAt.Before(cutoff) {
 			result = append(result, m)
 		}
 	}
@@ -123,6 +165,8 @@ func main() {
 	key := flag.String("key", "", "可选TLS密钥路径")
 	maxUpload := flag.Int64("max-upload", 1, "最大上传文件大小（GB）")
 	flag.Parse()
+
+	initChatCleaner()
 
 	cfg.addr = *addr
 	cfg.rootDir = *dir

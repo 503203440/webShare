@@ -505,6 +505,7 @@
             color: #333;
             line-height: 1.5;
             word-break: break-word;
+            white-space: pre-wrap;
         }
         .chat-msg-time {
             font-size: 11px;
@@ -650,7 +651,7 @@
         </div>
         <div class="chat-messages" id="chatMessages"></div>
         <div class="chat-input-area">
-            <input type="text" class="chat-input" id="chatInput" placeholder="输入消息..." maxlength="500">
+            <input type="text" class="chat-input" id="chatInput" placeholder="输入消息...">
             <button class="chat-send" id="chatSendBtn" onclick="sendChatMessage()">发送</button>
         </div>
     </div>
